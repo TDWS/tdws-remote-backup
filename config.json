@@ -1,0 +1,27 @@
+{
+  "vhosts_dirs": ["/etc/apache2/sites-enabled"],
+  "custom_sites": [{
+    "dir": "/var/www/site2",
+    "db": {
+      "type": "CustomMysql",
+      "name": "testdb",
+      "username": "testuser",
+      "password": "testpass"
+    },
+    "onFinish": "echo "
+  }, {
+    "dir": "/var/www/site3",
+    "db": {
+      "command": "mysqldump --opt --username='testuser' --password='testpass' > backups/site3.sql",
+      "command_files": ["backups/site3.sql"]
+    },
+    "onFinish": "echo "
+  }],
+  "onFinish": "echo ",
+  "local_backup_dir": "backups",
+  "rotation": {
+    "hours": 1,
+    "days": 0,
+    "months": 0
+  }
+}
