@@ -1,3 +1,8 @@
+###############################################################
+#     Backup script to dump databases and specific folder     #
+#  v.0.1.0  by Kerekes Edwin, TD Web Services, Ti Dimensie AG #
+#        For more Information: http://tdwebservices.com/      #
+###############################################################
 require 'rubygems'
 require 'bundler/setup'
 Bundler.setup(:default)
@@ -12,6 +17,24 @@ $logger = Logger.new(STDOUT)
 $logger.level = Logger::INFO
 
 $config = JSON.parse(File.read('config.json'))
+def open3(method_name: nil, command: nil, onErrorLine: nil, onError: nil, onSuccess: nil)
+  Open3.popen2e(command.to_s) do |_stdin, stdout_err, wait_thr|
+    unless wait_thr.value.success?
+      while line = stdout_err.gets
+        if onErrorLine.respond_to? :call
+          onErrorLine.call(line)
+          next
+        end
+        $logger.error("#{method_name} #{line}".red)
+      end
+      return onError.call(line) if onError.respond_to? :call
+      $logger.error("#{method_name}: Command failed... #{command} #{wait_thr.value}".red)
+      return -1
+    end
+    return onSuccess.call if onSuccess.respond_to? :call
+  end
+end
+
 def rotation
   dir = $config['local_backup_dir'] + '/'
   configtime = $config['rotation']['hours']\
@@ -44,34 +67,18 @@ def backupDir(*dir)
   filename = $config['local_backup_dir'] + '/' + Time.new.strftime('%Y-%m-%d-%H_%M') + '.tar'
   command = "tar -C #{$config['local_backup_dir']} -cf #{filename} #{dir.join(' ')}"
   $logger.info("Starting to pack #{command}")
-  Open3.popen2e(command.to_s) do |_stdin, stdout_err, wait_thr|
-    unless wait_thr.value.success?
-      while line = stdout_err.gets
-        $logger.error("#{__method__} #{line}".red)
-      end
-      $logger.error("#{__method__}: Packing failed... #{command} #{wait_thr.value}".red)
-      return -1
-    end
-  end
+  return -1 if open3(method_name: __method__, command: command) == -1
   $logger.info(command.green)
   filename
 end
 
 def processDB(vhost_file: nil, dir: nil, site: nil)
-  # custom sites
-  if site
+  if site # custom sites
+
     # if user supplied custom dumping command
     if site['db']['command']
       $logger.info("#{__method__}: CUSTOM db dumping: #{site['db']['command']}".green)
-      Open3.popen2e((site['db']['command']).to_s) do |_stdin, stdout_err, wait_thr|
-        unless wait_thr.value.success?
-          while line = stdout_err.gets
-            $logger.error("#{__method__} #{line}".red)
-          end
-          $logger.error("#{__method__}: Failed custom dumping, aborting... #{site['db']['command']} #{wait_thr.value}".red)
-          return -1
-        end
-      end
+      return if open3(method_name: __method__, command: site['db']['command'].to_s) == -1
 
       # check for missing dump files
       site['db']['command_files'].each do |file|
@@ -97,7 +104,9 @@ def processDB(vhost_file: nil, dir: nil, site: nil)
     return -1
   end # end custom site
 
-  # try to auto guess
+  # try to auto guess which database fits in
+  # module names must start with `Custom` ...
+  # return on first hit
   Dir.glob('database_readers/*') do |file|
     mname = File.basename(file, '.rb')
     next unless (mname =~ /^Custom/).nil?
@@ -120,21 +129,19 @@ $config['custom_sites'].each do |site|
     $logger.error('Cannot backup DB ... Aborting'.red)
   else
     backup_file = backupDir(site['dir'], *db)
+
+    # just to make logging happy
     dbfiles = db.is_a?(Enumerable) ? db.join(' ') : db
-
-    $logger.info { "#{__method__} #{$config['onFinish']} #{backup_file}".green }
-    Open3.popen2e("#{$config['onFinish']} #{backup_file}") do |_stdin, stdout_err, wait_thr|
-      unless wait_thr.value.success?
-        while line = stdout_err.gets
-          $logger.error("#{__method__} #{line}".red)
-        end
-        $logger.error("#{__method__} Failed onFinish... #{$config['onFinish']} #{wait_thr.value}".red)
-        return -1
-      end
-    end if $config['onFinish']
-
     $logger.info("Deleting db temp files... #{dbfiles}".blue)
+
     File.delete(*db)
+
+    if site['onFinish']
+      onFinish = site['onFinish'].gsub(/$files/, backup_file)
+      $logger.info { "#{__method__} #{onFinish}".green }
+      return -1 if open3(method_name: __method__, command: onFinish) == -1
+    end
+
   end
 end if $config['custom_sites'].is_a? Array
 
@@ -155,16 +162,11 @@ $config['vhosts_dirs'].each do |e|
       backup_file = backupDir(dir, *db)
       $logger.info("Deleting db temp files... #{db}".blue)
       File.delete(*db)
-      $logger.info { "#{__method__} #{$config['onFinish']} #{backup_file}".green }
-      Open3.popen2e("#{$config['onFinish']} #{backup_file}") do |_stdin, stdout_err, wait_thr|
-        unless wait_thr.value.success?
-          while line = stdout_err.gets
-            $logger.error("#{__method__} #{line}".red)
-          end
-          $logger.error("#{__method__} Failed onFinish... #{$config['onFinish']} #{wait_thr.value}".red)
-          return -1
-        end
-      end if $config['onFinish']
+      if $config['onFinish']
+        onFinish = $config['onFinish'].gsub(/$files/, backup_file)
+        $logger.info { "#{__method__} #{onFinish}".green }
+        return -1 if open3(method_name: __method__, command: onFinish) == -1
+      end
     end
   end
 end if $config['vhosts_dirs'].is_a? Array

@@ -5,7 +5,7 @@ module ApacheVhost
     def self.process(dir)
       unless Dir.exist?(dir)
         $logger.warn(dir + ' does not exists')
-        return
+        @processed_dirs
       end
 
       Dir.glob(dir + '/*').select do |vhost_file|

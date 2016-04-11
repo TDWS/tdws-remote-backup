@@ -8,16 +8,16 @@
       "username": "testuser",
       "password": "testpass"
     },
-    "onFinish": "echo "
+    "onFinish": "echo $files"
   }, {
     "dir": "/var/www/site3",
     "db": {
       "command": "mysqldump --opt --username='testuser' --password='testpass' > backups/site3.sql",
       "command_files": ["backups/site3.sql"]
     },
-    "onFinish": "echo "
+    "onFinish": "echo $files"
   }],
-  "onFinish": "echo ",
+  "onFinish": "echo $files",
   "local_backup_dir": "backups",
   "rotation": {
     "hours": 1,
