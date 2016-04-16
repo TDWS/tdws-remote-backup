@@ -58,13 +58,13 @@ def rotation
   end
 end
 
-def backupDir(*dir)
+def backupDir(site_name, *dir)
   rotation
   dir = dir.map(&lambda do |d|
     return d if File.directory?(d)
     return File.basename(d) if File.file?(d)
   end)
-  filename = $config['local_backup_dir'] + '/' + Time.new.strftime('%Y-%m-%d-%H_%M') + '.tar'
+  filename = $config['local_backup_dir'] + '/' + name + '-' + Time.new.strftime('%Y-%m-%d-%H_%M') + '.tar'
   command = "tar -C #{$config['local_backup_dir']} -cf #{filename} #{dir.join(' ')}"
   $logger.info("Starting to pack #{command}")
   return -1 if open3(method_name: __method__, command: command) == -1
@@ -72,37 +72,36 @@ def backupDir(*dir)
   filename
 end
 
-def processDB(vhost_file: nil, dir: nil, site: nil)
-  if site # custom sites
-
+def processDB(site_name: nil, dir: nil, custom_site: nil)
+  if custom_site
     # if user supplied custom dumping command
-    if site['db']['command']
-      $logger.info("#{__method__}: CUSTOM db dumping: #{site['db']['command']}".green)
-      return if open3(method_name: __method__, command: site['db']['command'].to_s) == -1
+    if custom_site['db']['command']
+      $logger.info("#{__method__}: CUSTOM db dumping: #{custom_site['db']['command']}".green)
+      return if open3(method_name: __method__, command: custom_site['db']['command'].to_s) == -1
 
       # check for missing dump files
-      site['db']['command_files'].each do |file|
+      custom_site['db']['command_files'].each do |file|
         missing = []
         missing.push(file) unless File.exist?(file)
         if missing.any?
-          $logger.error("#{__method__}: Dumping were successfull however... file check failed #{missing.join(',')} -> #{site['db']['command_files'].join(',')}".red)
+          $logger.error("#{__method__}: Dumping were successfull however... file check failed #{missing.join(',')} -> #{custom_site['db']['command_files'].join(',')}".red)
           return -1
         end
       end
 
       # everything is ok
-      return site['db']['command_files']
+      return custom_site['db']['command_files']
     end
 
     # if not supplied custom command
     # db types...
-    if site['db']['type']
-      require_relative "database_readers/#{site['db']['type']}.rb"
-      process_result = eval(site['db']['type']).process(site: site)
+    if custom_site['db']['type']
+      require_relative "database_readers/#{custom_site['db']['type']}.rb"
+      process_result = eval(custom_site['db']['type']).process(custom_site: custom_site)
       return process_result if process_result != -1
     end
     return -1
-  end # end custom site
+  end # end custom custom_site
 
   # try to auto guess which database fits in
   # module names must start with `Custom` ...
@@ -111,24 +110,25 @@ def processDB(vhost_file: nil, dir: nil, site: nil)
     mname = File.basename(file, '.rb')
     next unless (mname =~ /^Custom/).nil?
     require_relative file
-    process_result = eval(mname).process(vhost_file: vhost_file, dir: dir)
+    process_result = eval(mname).process(site_name: site_name, dir: dir)
     return process_result if process_result != -1
   end
   -1 # error
 end
 
+# --custom sites--
 $config['custom_sites'].each do |site|
   unless Dir.exist?(site['dir'])
     $logger.info("Directory #{site['dir']} doesn't exists... skipping".blue)
     next
   end
   $logger.info("Custom processing #{site['dir']}")
-  db = processDB(site: site)
+  db = processDB(custom_site: site)
 
   if db == -1
     $logger.error('Cannot backup DB ... Aborting'.red)
   else
-    backup_file = backupDir(site['dir'], *db)
+    backup_file = backupDir(site["name"], site['dir'], *db)
 
     # just to make logging happy
     dbfiles = db.is_a?(Enumerable) ? db.join(' ') : db
@@ -145,21 +145,24 @@ $config['custom_sites'].each do |site|
   end
 end if $config['custom_sites'].is_a? Array
 
+# --apache sites--
 require_relative 'vhost_readers/apache'
 $config['vhosts_dirs'].each do |e|
   list = ApacheVhost.process(e)
   next unless list.any?
-  list.each do |dir, vhost_file|
-    $logger.info("Apache processing #{vhost_file} (DocumentRoot) -> #{dir}")
+  list.each do |site|
+    dir = site["dir"]
+    site_name = site["name"]
+    $logger.info("Apache processing #{site_name} (DocumentRoot) -> #{dir}")
     unless Dir.exist?(dir)
       $logger.info("Directory #{dir} doesn't exists... skipping".blue)
       next
     end
-    db = processDB(vhost_file: vhost_file, dir: dir)
+    db = processDB(site_name: site_name, dir: dir)
     if db == -1
       $logger.error('Cannot backup DB ... Aborting'.red)
     else
-      backup_file = backupDir(dir, *db)
+      backup_file = backupDir(site_name, dir, *db)
       $logger.info("Deleting db temp files... #{db}".blue)
       File.delete(*db)
       if $config['onFinish']

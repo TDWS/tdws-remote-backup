@@ -12,7 +12,7 @@ module CustomMysql
       return
     end
 
-    sqlfile = $config['local_backup_dir'] + '/' + site['db']['name'] + '.sql'
+    sqlfile = $config['local_backup_dir'] + '/' + site['name'] + '.sql'
 
     command = "mysqldump --opt --user='%s' --password='%s' %s > %s"\
       % [site['db']['username']\

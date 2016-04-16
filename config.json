@@ -2,6 +2,7 @@
   "vhosts_dirs": ["/etc/apache2/sites-enabled"],
   "custom_sites": [{
     "dir": "/var/www/site2",
+    "name": "flowershop",
     "db": {
       "type": "CustomMysql",
       "name": "testdb",

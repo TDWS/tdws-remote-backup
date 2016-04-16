@@ -6,7 +6,7 @@ module MagentoDB
     name
   end
   
-  def self.process(vhost_file: nil, dir: nil)
+  def self.process(site_name: nil, dir: nil)
     unless Dir.exist?(dir)
       $logger.warn(dir + ' does not exists')
       return
@@ -17,7 +17,7 @@ module MagentoDB
     $logger.info(self.class_name + " #{dir}/index.php".green)
 
     unless File.exist?(dir + '/app/etc/local.xml')
-      $logger.error(self.class_name + "#{dir}/app/etc/local.xml cannot be found THIS SHOULD NOT HAPPEN\nvhost: #{vhost_file}".red)
+      $logger.error(self.class_name + "#{dir}/app/etc/local.xml cannot be found THIS SHOULD NOT HAPPEN\nsite: #{site_name}".red)
       return
     end
 
@@ -25,13 +25,13 @@ module MagentoDB
     dsetup = doc.at_css('//default_setup')
 
     unless ['pdo_mysql'].any? { |e| e == dsetup.at_css('type').content }
-      $logger.error(self.class_name + "#{dir}/app/etc/local.xml cannot determine DATABASE TYPE THIS SHOULD NOT HAPPEN\nvhost: #{vhost_file}".red)
+      $logger.error(self.class_name + "#{dir}/app/etc/local.xml cannot determine DATABASE TYPE THIS SHOULD NOT HAPPEN\nsite: #{site_name}".red)
       return
     end
     
     if dsetup.at_css('type').content == 'pdo_mysql'
       
-      sqlfile = $config['local_backup_dir'] + '/' + File.basename(vhost_file) + '.sql'
+      sqlfile = $config['local_backup_dir'] + '/' + site_name + '.sql'
       
       command = "mysqldump --opt --user='%s' --password='%s' %s > %s"\
         % [dsetup.at_css('username').content\

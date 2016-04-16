@@ -1,24 +1,32 @@
 module ApacheVhost
-    attr_accessor :processed_dirs
-    @processed_dirs = []
-    
-    def self.process(dir)
-      unless Dir.exist?(dir)
-        $logger.warn(dir + ' does not exists')
-        @processed_dirs
-      end
+  attr_accessor :processed_vhosts
+  @processed_vhosts = []
 
-      Dir.glob(dir + '/*').select do |vhost_file|
-        next unless File.file? vhost_file
-        c = 0
-        File.readlines(vhost_file).each do |vhost_line|
-          m = vhost_line.scan(/DocumentRoot.?"(.+)"/i)
-          next if m.none?
-          c += 1
-          @processed_dirs.push([m.flatten.join, vhost_file])
-        end
-        $logger.warn(vhost_file + ' no matches for DocumentRoot') if c == 0
-      end
-      @processed_dirs
+  def self.process(dir)
+    unless Dir.exist?(dir)
+      $logger.warn(dir + ' does not exists')
+      @processed_vhosts
     end
+
+    Dir.glob(dir + '/*').select do |vhost_file|
+      next unless File.file?(vhost_file) && File.readable?(vhost_file)
+      content = File.read(vhost_file)
+      content.scan(/(<VirtualHost.*?>.*?<\/VirtualHost>)/im) do |vsection|
+        vsection = vsection[0]
+        documentRoot = vsection.match(/DocumentRoot "(.*)?"/i)
+        serverName = vsection.match(/ServerName (.*)?/i)
+        vHead = vsection.match(/<VirtualHost.*?>/i)
+        unless documentRoot
+          $logger.warn("#{vhost_file} #{vHead} missing DocumentRoot can't get path... skipping")
+          next
+        end
+        unless serverName
+          $logger.warn("#{vhost_file} #{vHead} missing ServerName can't get name... skipping")
+          next
+        end
+        @processed_vhosts.push({'name' => serverName[1], 'dir' => documentRoot[1]})
+      end
+    end
+    @processed_vhosts
+  end
 end
