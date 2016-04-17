@@ -65,10 +65,18 @@ def backupDir(site_name, *dir)
     return File.basename(d) if File.file?(d)
   end)
   filename = $config['local_backup_dir'] + '/' + site_name + '-' + Time.new.strftime('%Y-%m-%d-%H_%M') + '.tar'
-  command = "tar -C #{$config['local_backup_dir']} -cf #{filename} #{dir.join(' ')}"
-  $logger.info("Starting to pack #{command}")
-  return -1 if open3(method_name: __method__, command: command) == -1
-  $logger.info(command.green)
+  if $config['onPacking']
+    # "onPacking": "tar -C $backupdir -cf $filename $files",
+    onPacking = $config['onPacking'].gsub(/$backupdir/, $config['local_backup_dir'])
+    onPacking = onPacking.gsub(/$filename/, filename)
+    onPacking = onPacking.gsub(/$files/, dir.join(' '))
+    $logger.info { "#{__method__} #{onPacking}".green }
+    return -1 if open3(method_name: __method__, command: onPacking) == $config['onPackingErrorExitCode']
+    $logger.info(onPacking.green)
+  else
+    $logger.error("Missing packing command... skipping")
+    return -1
+  end
   filename
 end
 
@@ -169,7 +177,7 @@ $config['vhosts_dirs'].each do |e|
       if $config['onFinish']
         onFinish = $config['onFinish'].gsub(/$files/, backup_file)
         $logger.info { "#{__method__} #{onFinish}".green }
-        return -1 if open3(method_name: __method__, command: onFinish) == -1
+        next if open3(method_name: __method__, command: onFinish) == -1
       end
     end
   end
