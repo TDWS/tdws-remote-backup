@@ -1,6 +1,6 @@
 {
   "vhosts_dirs": ["/etc/apache2/sites-enabled"],
-  "onPacking": "tar --ignore-failed-read -C $backupdir -cf $filename $files",
+  "onPacking": "tar -C $backupdir -cf $filename $files",
   "onPackingErrorExitCode": 2, 
   "custom_sites": [{
     "dir": "/var/www/site2",

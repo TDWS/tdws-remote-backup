@@ -67,9 +67,9 @@ def backupDir(site_name, *dir)
   filename = $config['local_backup_dir'] + '/' + site_name + '-' + Time.new.strftime('%Y-%m-%d-%H_%M') + '.tar'
   if $config['onPacking']
     # "onPacking": "tar -C $backupdir -cf $filename $files",
-    onPacking = $config['onPacking'].gsub(/$backupdir/, $config['local_backup_dir'])
-    onPacking = onPacking.gsub(/$filename/, filename)
-    onPacking = onPacking.gsub(/$files/, dir.join(' '))
+    onPacking = $config['onPacking'].gsub("$backupdir", $config['local_backup_dir'])
+    onPacking = onPacking.gsub("$filename", filename)
+    onPacking = onPacking.gsub("$files", dir.join(' '))
     $logger.info { "#{__method__} #{onPacking}".green }
     return -1 if open3(method_name: __method__, command: onPacking) == $config['onPackingErrorExitCode']
     $logger.info(onPacking.green)
@@ -175,7 +175,7 @@ $config['vhosts_dirs'].each do |e|
       File.delete(*db)
       next if backup_file == -1
       if $config['onFinish']
-        onFinish = $config['onFinish'].gsub(/$files/, backup_file)
+        onFinish = $config['onFinish'].gsub("$files", backup_file)
         $logger.info { "#{__method__} #{onFinish}".green }
         next if open3(method_name: __method__, command: onFinish) == -1
       end
