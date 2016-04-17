@@ -1,6 +1,7 @@
 module ApacheVhost
   attr_accessor :processed_vhosts
   @processed_vhosts = []
+  @@doc_roots = []
 
   def self.process(dir)
     unless Dir.exist?(dir)
@@ -16,14 +17,19 @@ module ApacheVhost
         documentRoot = vsection.match(/DocumentRoot "(.*)?"/i)
         serverName = vsection.match(/ServerName (.*)?/i)
         vHead = vsection.match(/<VirtualHost.*?>/i)
+        if @@doc_roots.include?(documentRoot)
+          $logger.warn("#{vhost_file} #{vHead} DocumentRoot already on list... skipping")
+          next
+        end
         unless documentRoot
-          $logger.warn("#{vhost_file} #{vHead} missing DocumentRoot can't get path... skipping")
+          $logger.warn("#{vhost_file} #{vHead} missing DocumentRoot (maybe missing \"...\") can't get path... skipping")
           next
         end
         unless serverName
           $logger.warn("#{vhost_file} #{vHead} missing ServerName can't get name... skipping")
           next
         end
+        @@doc_roots.push(documentRoot)
         @processed_vhosts.push({'name' => serverName[1], 'dir' => documentRoot[1]})
       end
     end
