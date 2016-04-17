@@ -64,7 +64,7 @@ def backupDir(site_name, *dir)
     return d if File.directory?(d)
     return File.basename(d) if File.file?(d)
   end)
-  filename = $config['local_backup_dir'] + '/' + name + '-' + Time.new.strftime('%Y-%m-%d-%H_%M') + '.tar'
+  filename = $config['local_backup_dir'] + '/' + site_name + '-' + Time.new.strftime('%Y-%m-%d-%H_%M') + '.tar'
   command = "tar -C #{$config['local_backup_dir']} -cf #{filename} #{dir.join(' ')}"
   $logger.info("Starting to pack #{command}")
   return -1 if open3(method_name: __method__, command: command) == -1

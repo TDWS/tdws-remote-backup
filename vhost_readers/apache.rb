@@ -22,11 +22,11 @@ module ApacheVhost
           next
         end
         unless documentRoot
-          $logger.warn("#{vhost_file} #{vHead} missing DocumentRoot (maybe missing \"...\") can't get path... skipping")
+          $logger.warn("#{vhost_file} #{vHead} missing DocumentRoot (maybe missing \"...\") can't get path... skipping".yellow)
           next
         end
         unless serverName
-          $logger.warn("#{vhost_file} #{vHead} missing ServerName can't get name... skipping")
+          $logger.warn("#{vhost_file} #{vHead} missing ServerName can't get name... skipping".yellow)
           next
         end
         @@doc_roots.push(documentRoot)
