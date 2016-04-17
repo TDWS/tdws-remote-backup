@@ -1,7 +1,7 @@
 {
   "vhosts_dirs": ["/etc/apache2/sites-enabled"],
   "onPacking": "tar -C $backupdir -cf $filename $files",
-  "onPackingErrorExitCode": 2, 
+  "onPackingIgnoreExitCode": [0,1],
   "custom_sites": [{
     "dir": "/var/www/site2",
     "name": "flowershop",

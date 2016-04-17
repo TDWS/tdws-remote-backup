@@ -17,9 +17,9 @@ $logger = Logger.new(STDOUT)
 $logger.level = Logger::INFO
 
 $config = JSON.parse(File.read('config.json'))
-def open3(method_name: nil, command: nil, onErrorLine: nil, onError: nil, onSuccess: nil)
+def open3(method_name: nil, command: nil, onErrorLine: nil, onError: nil, onSuccess: nil, ignoreExitCodes: [0])
   Open3.popen2e(command.to_s) do |_stdin, stdout_err, wait_thr|
-    unless wait_thr.value.success?
+    unless ignoreExitCodes.include?(wait_thr.value.to_i)
       while line = stdout_err.gets
         if onErrorLine.respond_to? :call
           onErrorLine.call(line)
@@ -71,10 +71,7 @@ def backupDir(site_name, *dir)
     onPacking = onPacking.gsub("$filename", filename)
     onPacking = onPacking.gsub("$files", dir.join(' '))
     $logger.info { "#{__method__} #{onPacking}...".green }
-    if open3(method_name: __method__, command: onPacking) == $config['onPackingErrorExitCode']
-      $logger.error { "#{__method__} #{onPacking} failed".green }
-      return -1
-    end
+    return -1 if open3(method_name: __method__, command: onPacking, ignoreExitCodes: $config['onPackingIgnoreExitCode']) == -1
   else
     $logger.error("Missing packing command... skipping")
     return -1
@@ -179,10 +176,7 @@ $config['vhosts_dirs'].each do |e|
       if $config['onFinish']
         onFinish = $config['onFinish'].gsub("$files", backup_file)
         $logger.info { "#{__method__} #{onFinish}...".blue }
-        if open3(method_name: __method__, command: onFinish) == -1
-          $logger.error {"#{__method__} #{onFinish} failed... #{f}".red}
-          next
-        end
+        next if open3(method_name: __method__, command: onFinish) == -1
       end
     end
   end
