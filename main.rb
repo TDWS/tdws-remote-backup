@@ -70,9 +70,11 @@ def backupDir(site_name, *dir)
     onPacking = $config['onPacking'].gsub("$backupdir", $config['local_backup_dir'])
     onPacking = onPacking.gsub("$filename", filename)
     onPacking = onPacking.gsub("$files", dir.join(' '))
-    $logger.info { "#{__method__} #{onPacking}".green }
-    return -1 if open3(method_name: __method__, command: onPacking) == $config['onPackingErrorExitCode']
-    $logger.info(onPacking.green)
+    $logger.info { "#{__method__} #{onPacking}...".green }
+    if open3(method_name: __method__, command: onPacking) == $config['onPackingErrorExitCode']
+      $logger.error { "#{__method__} #{onPacking} failed".green }
+      return -1
+    end
   else
     $logger.error("Missing packing command... skipping")
     return -1
@@ -176,8 +178,11 @@ $config['vhosts_dirs'].each do |e|
       next if backup_file == -1
       if $config['onFinish']
         onFinish = $config['onFinish'].gsub("$files", backup_file)
-        $logger.info { "#{__method__} #{onFinish}".green }
-        next if open3(method_name: __method__, command: onFinish) == -1
+        $logger.info { "#{__method__} #{onFinish}...".blue }
+        if open3(method_name: __method__, command: onFinish) == -1
+          $logger.error {"#{__method__} #{onFinish} failed... #{f}".red}
+          next
+        end
       end
     end
   end
