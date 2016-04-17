@@ -165,6 +165,7 @@ $config['vhosts_dirs'].each do |e|
       backup_file = backupDir(site_name, dir, *db)
       $logger.info("Deleting db temp files... #{db}".blue)
       File.delete(*db)
+      next if backup_file == -1
       if $config['onFinish']
         onFinish = $config['onFinish'].gsub(/$files/, backup_file)
         $logger.info { "#{__method__} #{onFinish}".green }
