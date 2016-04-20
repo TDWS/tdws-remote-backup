@@ -14,9 +14,22 @@ require 'pathname'
 require 'open3'
 require 'net/smtp'
 require 'socket'
+class MultiIO
+    def initialize(*targets)
+        @targets = targets
+    end
+
+    def write(*args)
+        @targets.each { |t| t.write(*args) }
+    end
+
+    def close
+        @targets.each(&:close)
+    end
+end
 
 $mailstream = StringIO.new
-$logger = Logger.new($mailstream)
+$logger = Logger.new(MultiIO.new($mailstream, STDOUT))
 $logger.level = Logger::INFO
 
 $config = JSON.parse(File.read('config.json'))
