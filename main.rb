@@ -35,7 +35,7 @@ $logger.level = Logger::INFO
 $config = JSON.parse(File.read('config.json'))
 def open3(method_name: nil, command: nil, onErrorLine: nil, onError: nil, onSuccess: nil, ignoreExitCodes: [0])
     Open3.popen2e(command.to_s) do |_stdin, stdout_err, wait_thr|
-        unless ignoreExitCodes.include?(wait_thr.value.to_i)
+        unless ignoreExitCodes.include?(wait_thr.value.exitstatus)
             while line = stdout_err.gets
                 if onErrorLine.respond_to? :call
                     onErrorLine.call(line)
