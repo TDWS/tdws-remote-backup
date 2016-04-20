@@ -21,6 +21,15 @@
     "onFinish": "echo $files"
   }],
   "onFinish": "echo $files",
+  "ReportMailServer": {
+    "host": "localhost",
+    "port": "993",
+    "subject": "Backup script report for $hostname $date",
+    "username": "user",
+    "password": "pass",
+    "from": "report@backupscript",
+    "to": "kerekes.edwin@gmail.com"
+  },
   "local_backup_dir": "backups",
   "rotation": {
     "hours": 1,
